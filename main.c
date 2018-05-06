@@ -5,31 +5,16 @@
 #include <ctype.h>
 #include <math.h>
 #include <inttypes.h>
+#include "main.h"
 
 /* 	uint8_t = 	1 byte 	= 8  bits
 	uint32_t = 	4 bytes	= 32 bits
 	uint64_t = 	8 bytes = 64 bits
 						*/
 
+
+
 #define MOD32 4294967296
-
-/*	TYPEDEFS	*/
-
-typedef uint32_t sbox [256];
-
-typedef struct block128bits{
-	uint32_t b0;
-	uint32_t b1;
-	uint32_t b2;
-	uint32_t b3;
-} block_128;
-
-typedef struct block32bits{
-	uint32_t b0;
-	uint32_t b1;
-	uint32_t b2;
-	uint32_t b3;
-} block_32;
 
 
 /*	GLOBAL VARS	*/
@@ -220,7 +205,7 @@ uint32_t calc_f3(uint32_t X, uint8_t k5, uint32_t k32){
 
 block_128 UmaIteracao(int iteration, block_128 X, block_32 kr5, block_128 km32){
 	/* K deve ser "global" */
-	
+
 	X.b2 = X.b2 ^ calc_f2(X.b3, kr5.b0, km32.b0);
 	X.b1 = X.b1 ^ calc_f1(X.b2, kr5.b1, km32.b1);
 	X.b0 = X.b0 ^ calc_f3(X.b1, kr5.b2, km32.b2);
