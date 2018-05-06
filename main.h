@@ -31,13 +31,13 @@ void convert_32_to_8(uint32_t I, block_32 * I_t);
 
 int pass_eval(char* pass);
 
-void pass_gen (char* old_pass, block_128 * pass);
+void pass_gen (char* old_pass, block_128 * pass, block_128 * k);
 
-void calc_k5(int i, block_32 * k5);
+block_32 calc_k5(int i);
 
-void calc_k32(int i, block_128 * k32);
+block_128 calc_k32(int i);
 
-void calc_k(int iteration, block_128 * k, block_128 * k32, block_32 * k5);
+void calc_k(int iteration, block_128 * k);
 
 block_32 calc_kr5(block_128 * k);
 
@@ -51,6 +51,6 @@ uint32_t calc_f3(uint32_t X, uint8_t k5, uint32_t k32);
 
 block_128 UmaIteracao(int iteration, block_128 X, block_32 kr5, block_128 km32);
 
-void tests(char* password, block_128 k, block_128 pass, block_32 k5, block_128 k32, uint32_t f1, uint32_t f2, uint32_t f3);
+void tests(char* password, block_128 k, block_128 pass);
 
 #endif /* MAIN_H_ */
