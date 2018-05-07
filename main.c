@@ -77,7 +77,88 @@ void convert_32_to_8(uint32_t I, block_32 * I_t){
 	I_t->b3 = (uint8_t)(I);
 }
 
+void switch_bytes_from_n(uint32_t * block, int start, int end){
+	int i;
+	for (i = start; i < end; i++)
+		* block |= (0xFF << (8 * i));
+}
+
+void set_last_bits_1(block_128 * X, long file_size){
+	long bytes_to_switch;
+	bytes_to_switch = file_size % 16;
+	if (bytes_to_switch > 12)
+		switch_bytes_from_n(&X->b3, bytes_to_switch, 16);
+	else if (bytes_to_switch > 8){
+		X->b3 |= 0xFFFFFFFF;
+		switch_bytes_from_n(&X->b2, bytes_to_switch, 12);
+	}
+	else if (bytes_to_switch > 4){
+		X->b3 |= 0xFFFFFFFF;
+		X->b2 |= 0xFFFFFFFF;
+		switch_bytes_from_n(&X->b1, bytes_to_switch, 8);
+	}
+	else if (bytes_to_switch == 0);
+	else{
+		X->b3 |= 0xFFFFFFFF;
+		X->b2 |= 0xFFFFFFFF;
+		X->b1 |= 0xFFFFFFFF;
+		switch_bytes_from_n(&X->b0, bytes_to_switch, 4);	
+	}
+}
+
 /* -------------------------------------------- */
+
+/* 	FILE HANDLER	*/
+
+void read_file(char file_name[], block_128 X[], long number_of_blocks, long file_size) {
+    FILE *p_input_file;
+    int i;
+    p_input_file = fopen(file_name, "rb");
+
+    if (p_input_file == NULL) {
+        printf("Input file %s not found.\n", file_name);
+        exit(1);
+    }
+    for (i = 0; i < number_of_blocks; i++){
+    	fread(&X[i], 1, 16, p_input_file);
+		if (i == number_of_blocks - 1) set_last_bits_1(&X[i], file_size);
+	}
+    fclose(p_input_file);
+}
+
+void write_to_file(char file_name[], block_128 X[], long number_of_blocks) {
+    FILE *p_output_file;
+    int i;
+    p_output_file = fopen(file_name, "wb");
+    if (p_output_file == NULL) {
+        printf("Output file %s not found.\n", file_name);
+        exit(1);
+    }
+    for (i = 0; i < number_of_blocks; i++){
+    	fwrite(&X[i], 1, 16, p_output_file);
+    }
+    fclose(p_output_file);
+}
+
+long get_file_size(char file_name[]) {
+    FILE *p_input_file;
+    long file_size;
+
+    p_input_file = fopen(file_name, "rb");
+    if (p_input_file == NULL) {
+        printf("Input file %s not found.\n", file_name);
+        exit(1);
+    }
+
+    fseek(p_input_file, 0, SEEK_END);
+    file_size = ftell(p_input_file);
+    fseek(p_input_file, 0, SEEK_SET);
+    fclose(p_input_file);
+
+    return file_size;
+}
+
+
 
 /*	PASSWORD CONFIGS	*/
 
@@ -102,19 +183,15 @@ void pass_gen (char* old_pass, block_128 * pass, block_128 * k){
 		memcpy(new_pass + pass_len, old_pass, 16 - pass_len);
 	} 
 	else memcpy(new_pass, old_pass, 16);
-	printf("new_pass: %s\n", new_pass);
+	/*printf("new_pass: %s\n", new_pass);*/
 	
 	pass->b0 = convert_string_to_uint (new_pass);
 	pass->b1 = convert_string_to_uint (new_pass + 4);
 	pass->b2 = convert_string_to_uint (new_pass + 8);
 	pass->b3 = convert_string_to_uint (new_pass + 12);
 
-	k->b0 = k->b0 ^ pass->b0;
-	k->b1 = k->b1 ^ pass->b1;
-	k->b2 = k->b2 ^ pass->b2;
-	k->b3 = k->b3 ^ pass->b3;
+	set_k0(k, pass);
 
-	printf("pass: %x %x %x %x\n", pass->b0, pass->b1, pass->b2, pass->b3);
 }
 
 /*	INTERM KEYS	*/
@@ -153,12 +230,10 @@ void calc_k(int iteration, block_128 * k){
 
 	k5 = calc_k5(iteration);
 	k32 = calc_k32(iteration);
-
 	k->b0 = k->b0 ^ calc_f2(k->b3, k5.b0, k32.b0);
 	k->b1 = k->b1 ^ calc_f1(k->b0, k5.b1, k32.b1);
 	k->b2 = k->b2 ^ calc_f3(k->b1, k5.b2, k32.b2);
 	k->b3 = k->b3 ^ calc_f2(k->b2, k5.b3, k32.b3);
-
 }
 
 
@@ -220,14 +295,72 @@ uint32_t calc_f3(uint32_t X, uint8_t k5, uint32_t k32){
 /*	MAIN ENCRYPT	*/
 
 
-block_128 UmaIteracao(int iteration, block_128 X, block_32 kr5, block_128 km32){
-	/* K deve ser "global" */
+block_128 UmaIteracao(block_128 X, block_32 kr5, block_128 km32){
+	
+
+	//printf("C: %x ^ %x\n", X.b2, calc_f2(X.b3, kr5.b0, km32.b0));
 	X.b2 = X.b2 ^ calc_f2(X.b3, kr5.b0, km32.b0);
+	//printf("B: %x ^ %x\n", X.b1, calc_f2(X.b2, kr5.b1, km32.b1));
 	X.b1 = X.b1 ^ calc_f1(X.b2, kr5.b1, km32.b1);
+	//printf("A: %x ^ %x\n", X.b0, calc_f2(X.b1, kr5.b2, km32.b2));
 	X.b0 = X.b0 ^ calc_f3(X.b1, kr5.b2, km32.b2);
+	//printf("D: %x ^ %x\n", X.b3, calc_f2(X.b0, kr5.b3, km32.b3));
 	X.b3 = X.b3 ^ calc_f2(X.b0, kr5.b3, km32.b3);
 
+
 	return X;
+}
+
+block_128 UmaIteracao_inv(block_128 X, block_32 kr5, block_128 km32){
+	
+	block_128 old_block;
+
+	old_block.b1 = X.b1 ^ calc_f1(X.b2, kr5.b1, km32.b1);
+	old_block.b0 = X.b0 ^ calc_f3(X.b1, kr5.b2, km32.b2);
+	old_block.b3 = X.b3 ^ calc_f2(X.b0, kr5.b3, km32.b3);
+	old_block.b2 = X.b2 ^ calc_f2(old_block.b3, kr5.b0, km32.b0);
+
+	return old_block;
+}
+
+void calc_all_ks(block_128 * all_subkeys, block_128 * k){
+	int i;
+	for (i = 0; i < 12; i++){
+		calc_k(i, k);
+		memcpy (&all_subkeys[i], k, sizeof(block_128));
+	}
+}
+
+void set_k0(block_128 * k, block_128 * pass){
+	k->b0 = 0x5A827999 ^ pass->b0;
+	k->b1 = 0x874AA67D ^ pass->b1;
+	k->b2 = 0x657B7C8E ^ pass->b2;
+	k->b3 = 0xBD070242 ^ pass->b3;
+}
+
+void encrypt_k128(block_128 * X, block_128 * k, block_128 * pass, long number_of_blocks){
+	int i, j;
+	for (j = 0; j < number_of_blocks; j++){
+		/*printf("oe: %x %x %x %x\n", X[j].b0, X[j].b1, X[j].b2, X[j].b3);*/
+		printf("X[%d] B: %x %x %x %x\n",j, X[j].b0, X[j].b1, X[j].b2, X[j].b3);
+		for (i = 0; i < 12; i++){
+			calc_k(i, k);
+		    X[j] = UmaIteracao(X[j], calc_kr5(k), calc_km32(k));
+		}
+		printf("X[%d] A: %x %x %x %x\n",j, X[j].b0, X[j].b1, X[j].b2, X[j].b3);
+		set_k0(k, pass);
+	}
+}
+
+void decrypt_k128(block_128 * X, block_128 * all_subkeys, block_128 * k, long number_of_blocks){
+	int i, j;
+	calc_all_ks(all_subkeys, k);
+	for (j = 0; j < number_of_blocks; j++){
+		printf("X[%d] B: %x %x %x %x\n",j, X[j].b0, X[j].b1, X[j].b2, X[j].b3);
+		for (i = 11; i >= 0; i--)
+		    X[j] = UmaIteracao_inv(X[j], calc_kr5(&all_subkeys[i]), calc_km32(&all_subkeys[i]));
+		printf("X[%d] A: %x %x %x %x\n",j, X[j].b0, X[j].b1, X[j].b2, X[j].b3);
+	}
 }
 
 /*	PRINTF TESTS 	*/
@@ -241,62 +374,35 @@ void tests(char* password, block_128 k, block_128 pass){
 	printf("ConstM: %x\n", ConstM);
 }
 
-void read_file(char file_name[], block_128 * X) {
-    FILE *p_input_file;
-
-    p_input_file = fopen(file_name, "rb");
-
-    if (p_input_file == NULL) {
-        printf("Input file %s not found.\n", file_name);
-        exit(1);
-    }
-
-    fread(X, 4, 4, p_input_file);
-    fclose(p_input_file);
-}
-
-void write_to_file(char file_name[], block_128 * X) {
-    FILE *p_output_file;
-
-    p_output_file = fopen(file_name, "wb");
-    if (p_output_file == NULL) {
-        printf("Output file %s not found.\n", file_name);
-        exit(1);
-    }
-
-    fwrite(X, 4, 4, p_output_file);
-    
-    fclose(p_output_file);
-}
-
 
 int main(int argc, char** argv){
-	block_128 k, pass, km32, X;
+	block_128 k, pass, km32;
+	block_128 * X;
 	block_32 kr5;
-	uint32_t f1, f2, f3;
-	FILE* f;
-	int i;
+	block_128 * all_subkeys;
+	int i, j;
+	long file_size, number_of_blocks;
 	k.b0 = 0x5A827999; 
 	k.b1 = 0x874AA67D;
 	k.b2 = 0x657B7C8E;
 	k.b3 = 0xBD070242;
 	read_sboxes();
 
-    read_file(argv[1], &X);
-    write_to_file("text_read", &X);
+	file_size = get_file_size(argv[1]);
+    if (file_size % 16 == 0) number_of_blocks = file_size / 16;
+    else number_of_blocks = file_size / 16 + 1;
+    X = malloc (number_of_blocks * sizeof(block_128));
+    all_subkeys = malloc (12 * sizeof(block_128));
+    read_file(argv[1], X, number_of_blocks, file_size);
 
-	printf("oe: %x %x %x %x\n", X.b0, X.b1, X.b2, X.b3);
 	pass_gen(argv[2], &pass, &k);
-	tests(argv[2], k, pass);
 
-	for (i = 0; i < 12; i++){
-		calc_k(i, &k);
-	    kr5 = calc_kr5(&k);
-	    km32 = calc_km32(&k);
-	    X = UmaIteracao(i, X, kr5, km32);
-	    printf("X(%d): %x %x %x %x\n",i, X.b0, X.b1, X.b2, X.b3);
-	}
-    write_to_file("encrypt2.txt", &X);
+	encrypt_k128(X, &k, &pass, number_of_blocks);
+
+    write_to_file("encrypt2.txt", X, number_of_blocks);
+
+    decrypt_k128(X, all_subkeys, &k, number_of_blocks);
+    write_to_file("dec.txt", X, number_of_blocks);
 	
 	return 0;
 }
