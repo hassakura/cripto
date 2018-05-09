@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <math.h>
 #include <inttypes.h>
+#include <limits.h>
 #include "main.h"
 
 /* 	uint8_t = 	1 byte 	= 8  bits
@@ -106,6 +107,13 @@ void set_last_bits_1(block_128 * X, long file_size){
 	}
 }
 
+void set_k0(block_128 * k, block_128 * pass){
+	k->b0 = 0x5A827999 ^ pass->b0;
+	k->b1 = 0x874AA67D ^ pass->b1;
+	k->b2 = 0x657B7C8E ^ pass->b2;
+	k->b3 = 0xBD070242 ^ pass->b3;
+}
+
 /* -------------------------------------------- */
 
 /* 	FILE HANDLER	*/
@@ -191,6 +199,8 @@ void pass_gen (char* old_pass, block_128 * pass, block_128 * k){
 	pass->b3 = convert_string_to_uint (new_pass + 12);
 
 	set_k0(k, pass);
+
+	free(new_pass);
 
 }
 
@@ -331,36 +341,107 @@ void calc_all_ks(block_128 * all_subkeys, block_128 * k){
 	}
 }
 
-void set_k0(block_128 * k, block_128 * pass){
-	k->b0 = 0x5A827999 ^ pass->b0;
-	k->b1 = 0x874AA67D ^ pass->b1;
-	k->b2 = 0x657B7C8E ^ pass->b2;
-	k->b3 = 0xBD070242 ^ pass->b3;
-}
+
 
 void encrypt_k128(block_128 * X, block_128 * k, block_128 * pass, long number_of_blocks){
 	int i, j;
 	for (j = 0; j < number_of_blocks; j++){
 		/*printf("oe: %x %x %x %x\n", X[j].b0, X[j].b1, X[j].b2, X[j].b3);*/
-		printf("X[%d] B: %x %x %x %x\n",j, X[j].b0, X[j].b1, X[j].b2, X[j].b3);
 		for (i = 0; i < 12; i++){
 			calc_k(i, k);
 		    X[j] = UmaIteracao(X[j], calc_kr5(k), calc_km32(k));
 		}
-		printf("X[%d] A: %x %x %x %x\n",j, X[j].b0, X[j].b1, X[j].b2, X[j].b3);
 		set_k0(k, pass);
 	}
 }
 
-void decrypt_k128(block_128 * X, block_128 * all_subkeys, block_128 * k, long number_of_blocks){
+void decrypt_k128(block_128 * X, block_128 * all_subkeys, block_128 * k, block_128 * pass, long number_of_blocks){
 	int i, j;
 	calc_all_ks(all_subkeys, k);
 	for (j = 0; j < number_of_blocks; j++){
-		printf("X[%d] B: %x %x %x %x\n",j, X[j].b0, X[j].b1, X[j].b2, X[j].b3);
 		for (i = 11; i >= 0; i--)
 		    X[j] = UmaIteracao_inv(X[j], calc_kr5(&all_subkeys[i]), calc_km32(&all_subkeys[i]));
-		printf("X[%d] A: %x %x %x %x\n",j, X[j].b0, X[j].b1, X[j].b2, X[j].b3);
 	}
+	set_k0(k, pass);
+}
+
+int hamming_dist(block_128 BlC, block_128 BlAC){
+
+	block_128 diff_bits;
+	int dist = 0;
+	
+
+	for (diff_bits.b0 = BlC.b0 ^ BlAC.b0; diff_bits.b0 > 0; diff_bits.b0 >>= 1)
+		if (diff_bits.b0 & 1) dist++;
+	for (diff_bits.b1 = BlC.b1 ^ BlAC.b1; diff_bits.b1 > 0; diff_bits.b1 >>= 1)
+		if (diff_bits.b1 & 1) dist++;
+	for (diff_bits.b2 = BlC.b2 ^ BlAC.b2; diff_bits.b2 > 0; diff_bits.b2 >>= 1)
+		if (diff_bits.b2 & 1) dist++;
+	for (diff_bits.b3 = BlC.b3 ^ BlAC.b3; diff_bits.b3 > 0; diff_bits.b3 >>= 1)
+		if (diff_bits.b3 & 1) dist++;
+
+	return dist;
+}
+
+void change_bit_in_position(int index, block_128 * b){
+	int block_position = index % 128;
+	if (block_position > 96)
+		b->b3 ^= 1LL << (block_position - 96);
+	else if (block_position > 64)
+		b->b2 ^= 1LL << (block_position - 64);
+	else if (block_position > 32)
+		b->b1 ^= 1LL << (block_position - 32);
+	else
+		b->b0 ^= 1LL << block_position;
+}
+
+void hamming_standard(block_128 * X, block_128 * all_subkeys, block_128 * k, block_128 * pass, long number_of_blocks){
+
+	block_128 * VetAlter;
+	block_128 * VetEntra;
+	int i, j, l, h_dist = 0;
+
+	VetEntra = malloc (number_of_blocks * sizeof(block_128));
+    VetAlter = malloc (number_of_blocks * sizeof(block_128));
+
+	memcpy(VetAlter, X, number_of_blocks * sizeof(block_128));
+	memcpy(VetEntra, X, number_of_blocks * sizeof(block_128));
+
+	encrypt_k128(VetEntra, k, pass, number_of_blocks);
+
+	/*	Começa o barato */
+
+	long SomaH [number_of_blocks];
+	long MinH [number_of_blocks];
+	long MaxH [number_of_blocks];
+
+	for (i = 0; i < number_of_blocks; i++){
+		SomaH[i] = 0;
+		MinH[i] = INT_MAX;
+		MaxH[i] = 0;
+	}
+
+	for (j = 0; j < 128 * number_of_blocks; j++){
+		printf("A: %x\n", VetAlter[j/128].b0);
+		change_bit_in_position(j, &VetAlter[j/128]);
+		printf("B: %x\n", VetAlter[j/128].b0);
+		encrypt_k128(VetAlter, k, pass, number_of_blocks);
+		for (l = 0; l < number_of_blocks;l++){
+			h_dist = hamming_dist(VetEntra[l], VetAlter[l]);
+			if (h_dist > MaxH[l]) MaxH[l] = h_dist;
+			if (h_dist < MinH[l] && h_dist) MinH[l] = h_dist;
+			SomaH[l] += h_dist;
+		}
+		decrypt_k128(VetAlter, all_subkeys, k, pass, number_of_blocks);
+		
+		change_bit_in_position(j, &VetAlter[j/128]);
+		
+	}
+	for (j = 0; j < number_of_blocks; j++)
+		printf("[%d]: Min: %ld Max: %ld Soma: %ld Media: %f\n",j, MinH[j], MaxH[j], SomaH[j], SomaH[j] / 128.0);
+	write_to_file("decrypt_main_hamming.txt", VetAlter, number_of_blocks);
+	free(VetEntra);
+	free(VetAlter);
 }
 
 /*	PRINTF TESTS 	*/
@@ -376,11 +457,9 @@ void tests(char* password, block_128 k, block_128 pass){
 
 
 int main(int argc, char** argv){
-	block_128 k, pass, km32;
+	block_128 k, pass;
 	block_128 * X;
-	block_32 kr5;
 	block_128 * all_subkeys;
-	int i, j;
 	long file_size, number_of_blocks;
 	k.b0 = 0x5A827999; 
 	k.b1 = 0x874AA67D;
@@ -399,10 +478,15 @@ int main(int argc, char** argv){
 
 	encrypt_k128(X, &k, &pass, number_of_blocks);
 
-    write_to_file("encrypt2.txt", X, number_of_blocks);
+    write_to_file("encrypt_main.txt", X, number_of_blocks);
 
-    decrypt_k128(X, all_subkeys, &k, number_of_blocks);
-    write_to_file("dec.txt", X, number_of_blocks);
+    decrypt_k128(X, all_subkeys, &k, &pass, number_of_blocks);
+    write_to_file("decrypt_main.txt", X, number_of_blocks);
+
+    hamming_standard(X, all_subkeys, &k, &pass, number_of_blocks);
+
+    free(X);
+    free(all_subkeys);
 	
 	return 0;
 }
