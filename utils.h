@@ -5,13 +5,13 @@
 #include <stdint.h>
 
 
-void read_file(char file_name[], block_128 X[], long number_of_blocks, long file_size);
+void read_file(char file_name[], block_128 X[], uint32_t number_of_blocks, uint32_t file_size);
 
-void write_to_file(char file_name[], block_128 X[], long number_of_blocks);
+void write_to_file(char file_name[], block_128 X[], uint32_t number_of_blocks);
 
-long get_file_size(char file_name[]);
+uint32_t get_file_size(char file_name[]);
 
-void set_last_bits_1(block_128 * X, long file_size);
+void set_last_bits_1(block_128 * X, uint32_t file_size);
 
 uint32_t rotate_left_32(uint32_t value_32, uint8_t value_8);
 

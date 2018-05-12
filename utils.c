@@ -3,7 +3,7 @@
 #include "structs.h"
 #include "utils.h"
 
-void read_file(char file_name[], block_128 X[], long number_of_blocks, long file_size) {
+void read_file(char file_name[], block_128 X[], uint32_t number_of_blocks, uint32_t file_size) {
     FILE *p_input_file;
     int i;
     p_input_file = fopen(file_name, "rb");
@@ -12,14 +12,15 @@ void read_file(char file_name[], block_128 X[], long number_of_blocks, long file
         printf("Input file %s not found.\n", file_name);
         exit(1);
     }
-    for (i = 0; i < number_of_blocks; i++){
+    for (i = 0; i < number_of_blocks - 1; i++){
     	fread(&X[i], 1, 16, p_input_file);
-		if (i == number_of_blocks - 1) set_last_bits_1(&X[i], file_size);
+		if (i == number_of_blocks - 2) set_last_bits_1(&X[i], file_size);
 	}
+	if (file_size % 16 > 0) set_last_bits_1(&X[number_of_blocks - 1], 4);
     fclose(p_input_file);
 }
 
-void write_to_file(char file_name[], block_128 X[], long number_of_blocks) {
+void write_to_file(char file_name[], block_128 X[], uint32_t file_size) {
     FILE *p_output_file;
     int i;
     p_output_file = fopen(file_name, "wb");
@@ -27,13 +28,11 @@ void write_to_file(char file_name[], block_128 X[], long number_of_blocks) {
         printf("Output file %s not found.\n", file_name);
         exit(1);
     }
-    for (i = 0; i < number_of_blocks; i++){
-    	fwrite(&X[i], 1, 16, p_output_file);
-    }
+    fwrite(X, 1, file_size, p_output_file);
     fclose(p_output_file);
 }
 
-long get_file_size(char file_name[]) {
+uint32_t get_file_size(char file_name[]) {
     FILE *p_input_file;
     long file_size;
 
@@ -51,7 +50,7 @@ long get_file_size(char file_name[]) {
     return file_size;
 }
 
-void set_last_bits_1(block_128 * X, long file_size){
+void set_last_bits_1(block_128 * X, uint32_t file_size){
 	long bytes_to_switch;
 	bytes_to_switch = file_size % 16;
 	if (bytes_to_switch > 12)

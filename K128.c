@@ -215,7 +215,7 @@ void calc_all_ks(block_128 * all_subkeys, block_128 * k){
 
 
 
-void encrypt_k128(block_128 * X, block_128 * k, block_128 * pass, long number_of_blocks){
+void encrypt_k128(block_128 * X, block_128 * k, block_128 * pass, uint32_t number_of_blocks){
 	int i, j;
 	block_128 VI;
 	X[0].b0 ^= 0xFFFFFFFF;
@@ -239,7 +239,7 @@ void encrypt_k128(block_128 * X, block_128 * k, block_128 * pass, long number_of
 	}
 }
 
-void decrypt_k128(block_128 * X, block_128 * all_subkeys, block_128 * k, block_128 * pass, long number_of_blocks){
+void decrypt_k128(block_128 * X, block_128 * all_subkeys, block_128 * k, block_128 * pass, uint32_t number_of_blocks){
 	int i, j;
 	block_128 VI;
 	block_128 * X_CBC;
@@ -293,7 +293,7 @@ int hamming_dist(block_128 BlC, block_128 BlAC){
 	return dist;
 }
 
-void hamming_K128(block_128 * X, block_128 * all_subkeys, block_128 * k, block_128 * pass, long number_of_blocks, int flag){
+void hamming_K128(block_128 * X, block_128 * all_subkeys, block_128 * k, block_128 * pass, uint32_t number_of_blocks, int flag){
 
 	block_128 * VetAlter;
 	block_128 * VetEntra;
@@ -337,7 +337,6 @@ void hamming_K128(block_128 * X, block_128 * all_subkeys, block_128 * k, block_1
 	}
 	for (j = 0; j < number_of_blocks; j++)
 		printf("[%d]: Min: %ld Max: %ld Media: %f\n",j, MinH[j], MaxH[j], SomaH[j] / (128.0 * (j + 1)));
-	write_to_file("decrypt_main_hamming.txt", VetAlter, number_of_blocks);
 	free(VetEntra);
 	free(VetAlter);
 }

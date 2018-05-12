@@ -35,12 +35,12 @@ block_128 UmaIteracao(block_128 X, block_32 kr5, block_128 km32);
 
 block_128 UmaIteracao_inv(block_128 X, block_32 kr5, block_128 km32);
 
-void encrypt_k128(block_128 * X, block_128 * k, block_128 * pass, long number_of_blocks);
+void encrypt_k128(block_128 * X, block_128 * k, block_128 * pass, uint32_t number_of_blocks);
 
-void decrypt_k128(block_128 * X, block_128 * all_subkeys, block_128 * k, block_128 * pass, long number_of_blocks);
+void decrypt_k128(block_128 * X, block_128 * all_subkeys, block_128 * k, block_128 * pass, uint32_t number_of_blocks);
 
 int hamming_dist(block_128 BlC, block_128 BlAC);
 
-void hamming_K128(block_128 * X, block_128 * all_subkeys, block_128 * k, block_128 * pass, long number_of_blocks, int flag);
+void hamming_K128(block_128 * X, block_128 * all_subkeys, block_128 * k, block_128 * pass, uint32_t number_of_blocks, int flag);
 
 #endif /* K128_H_ */
