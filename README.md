@@ -46,3 +46,6 @@ Para usar o programa:
   * **Para calcular aleatoriedade pelo método 2  (conforme descrito no enunciado):**
     ./main -2 -i "arquivo de entrada" -p "senha"
 
+### Configs
+
+Foi usado o **gcc** para compilar o programa, em um computador com processador *Intel® Core™ i7-2600K CPU @ 3.40GHz × 8 **64 bits***, com 7,7 GiB de memória e SO **Ubuntu 18.04 LTS**
