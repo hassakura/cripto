@@ -38,11 +38,11 @@ Para usar o programa:
 1. digite **make**
 2. use um dos comandos listados abaixo:
   * **Para criptografar arquivos:** 
-    ./main -c -i <arquivo de entrada> -o <arquivo de saída> -p <senha> -a
+    ./main -c -i "arquivo de entrada" -o "arquivo de saída" -p "senha" -a
   * **Para decriptografar arquivos:**
-    ./main -d -i <arquivo de entrada> -o <arquivo de saída> -p <senha>
+    ./main -d -i "arquivo de entrada" -o "arquivo de saída" -p "senha"
   * **Para calcular aleatoriedade pelo método 1 (conforme descrito no enunciado):**
-    ./main -1 -i <arquivo de entrada> -p <senha>
+    ./main -1 -i "arquivo de entrada" -p "senha"
   * **Para calcular aleatoriedade pelo método 2  (conforme descrito no enunciado):**
-    ./main -2 -i <arquivo de entrada> -p <senha>
+    ./main -2 -i "arquivo de entrada" -p "senha"
 
