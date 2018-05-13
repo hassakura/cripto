@@ -55,7 +55,6 @@ int main(int argc, char** argv){
     }
     else if (strcmp(argv[1], "-d") == 0){
     	pass_gen(argv[7], &pass, &k);
-    	write_to_file("testt.txt", X, file_size);
     	decrypt_k128(X, all_subkeys, &k, &pass, number_of_blocks);
     	write_to_file(argv[5], X, X[number_of_blocks - 2].b0);
     }
