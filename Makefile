@@ -17,7 +17,7 @@ K128.o: K128.c
 	$(CC) -c K128.c
 
 main: $(DEPS) $(OBJ) main.c
-	$(CC) $(CC_OPTS) $(CC_OPT) -o main $(OBJ) main.c $(CC_MATH)
+	$(CC) $(CC_OPTS) $(CC_OPT) -o main $(OBJ) main.c $(CC_MATH) -no-pie
 
 run:
 	main
