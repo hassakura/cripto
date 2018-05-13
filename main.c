@@ -40,8 +40,6 @@ int main(int argc, char** argv){
     
     all_subkeys = malloc (12 * sizeof(block_128));
     read_file(argv[3], X, number_of_blocks, file_size);
-
-    /*	aqui	*/
     
     if (strcmp(argv[1], "-c") == 0){
     	pass_gen(argv[7], &pass, &k);

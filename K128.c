@@ -6,13 +6,15 @@
 #include <math.h>
 
 
-#define MOD32 4294967296
+#define MOD32 4294967296 /*	2^32 */
 
 sbox s1, s2, s3, s4;
 uint8_t ConstR = 0b0010011;
 uint32_t ConstM = 0xCB3725F7;
 
 
+/*	Le os arquivos sbox1..sbox4 e guarda os valores das sboxes
+	em s1..s4 	*/
 void read_sboxes(){
 	FILE* f_sbox_1;
 	FILE* f_sbox_2;
@@ -38,6 +40,8 @@ void read_sboxes(){
 	else printf("Cant read sbox files");
 }
 
+/*	Recebe a senha inserida pelo usuario e calcula o valor
+	de k0 (K0 = K XOR (5A827999874AA67D657B7C8EBD070242)16)	*/
 
 void set_k0(block_128 * k, block_128 * pass){
 	k->b0 = 0x5A827999 ^ pass->b0;
@@ -45,6 +49,7 @@ void set_k0(block_128 * k, block_128 * pass){
 	k->b2 = 0x657B7C8E ^ pass->b2;
 	k->b3 = 0xBD070242 ^ pass->b3;
 }
+
 
 int pass_eval(char* pass){
 	int letters = 0, numbers = 0;
@@ -57,6 +62,11 @@ int pass_eval(char* pass){
 	return (numbers > 1 && letters > 1 && i >= 8);
 }
 
+
+/* 	Recebe a senha do usuario, e se len(pass) < 16, concatena com os
+	mesmos caracteres de pass ate que len(pass) - 16. No final, faz
+	a conversao de string para valores inteiros
+*/
 void pass_gen (char* old_pass, block_128 * pass, block_128 * k){
 	size_t pass_len = strlen(old_pass);
 	char* new_pass = malloc(16 * sizeof (uint8_t));
@@ -67,7 +77,6 @@ void pass_gen (char* old_pass, block_128 * pass, block_128 * k){
 		memcpy(new_pass + pass_len, old_pass, 16 - pass_len);
 	}
 	else memcpy(new_pass, old_pass, 16);
-	/*printf("new_pass: %s\n", new_pass);*/
 
 	pass->b0 = convert_string_to_uint (new_pass);
 	pass->b1 = convert_string_to_uint (new_pass + 4);
@@ -80,7 +89,7 @@ void pass_gen (char* old_pass, block_128 * pass, block_128 * k){
 
 }
 
-/*	INTERM KEYS	*/
+
 
 block_32 calc_k5(int i){
 
@@ -205,6 +214,10 @@ block_128 UmaIteracao_inv(block_128 X, block_32 kr5, block_128 km32){
 	return old_block;
 }
 
+/*	Calcula todos os valores dos Ks, usando a senha dada.
+	Usado para a decriptografia
+*/
+
 void calc_all_ks(block_128 * all_subkeys, block_128 * k){
 	int i;
 	for (i = 0; i < 12; i++){
@@ -217,19 +230,18 @@ void calc_all_ks(block_128 * all_subkeys, block_128 * k){
 
 void encrypt_k128(block_128 * X, block_128 * k, block_128 * pass, uint32_t number_of_blocks){
 	int i, j;
-	block_128 VI;
+	block_128 VI; /* VI dado pelo enunciado (todos bits 1)	*/
 	X[0].b0 ^= 0xFFFFFFFF;
 	X[0].b1 ^= 0xFFFFFFFF;
 	X[0].b2 ^= 0xFFFFFFFF;
 	X[0].b3 ^= 0xFFFFFFFF;
 	for (j = 0; j < number_of_blocks; j++){
-		/*printf("oe: %x %x %x %x\n", X[j].b0, X[j].b1, X[j].b2, X[j].b3);*/
 		for (i = 0; i < 12; i++){
 			calc_k(i, k);
 		    X[j] = UmaIteracao(X[j], calc_kr5(k), calc_km32(k));
 		}
 		set_k0(k, pass);
-
+		/*	Operacao do modo CBC (Yk = fk(x ^ Yk-1))	*/
 		if (j + 1 < number_of_blocks){
 			X[j + 1].b0 ^= X[j].b0;
 			X[j + 1].b1 ^= X[j].b1;
@@ -258,6 +270,7 @@ void decrypt_k128(block_128 * X, block_128 * all_subkeys, block_128 * k, block_1
 
 
 	}
+	/*	Operacao do modo CBC, mas na ordem inversa (Xk = fk(Yk) ^ Yk-1)	*/
 	for (j = 0; j < number_of_blocks; j++){
 		if (j){
 				X[j].b0 ^= X_CBC[j - 1].b0;
@@ -272,9 +285,11 @@ void decrypt_k128(block_128 * X, block_128 * all_subkeys, block_128 * k, block_1
 				X[j].b3 ^= VI.b3;
 		}
 	}
+	free(X_CBC);
 	set_k0(k, pass);
 }
 
+/*	Calcula a distancia de Hamming entre o bloco (128 bits) de VetEntraC e VetAlterC */
 int hamming_dist(block_128 BlC, block_128 BlAC){
 
 	block_128 diff_bits;
@@ -292,6 +307,13 @@ int hamming_dist(block_128 BlC, block_128 BlAC){
 
 	return dist;
 }
+
+
+/*	Recebe o conteudo do arquivo lido, e calcula a distancia de hammming como
+	descrito no enunciado. Apos o calculo, mostra os valores maximos, minimos
+	e a media de cada bloco (128 bits). Se flag == 0, muda apenas o valor do
+	j-esimo bit, senao, muda tambem o valor do (j + 8)-esimo bit.
+*/
 
 void hamming_K128(block_128 * X, block_128 * all_subkeys, block_128 * k, block_128 * pass, uint32_t number_of_blocks, int flag){
 

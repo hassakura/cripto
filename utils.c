@@ -3,6 +3,12 @@
 #include "structs.h"
 #include "utils.h"
 
+
+/*	Recebe o nome do arquivo a ser lido, guarda o conteudo em X e caso o
+	comprimento do arquivo nao seja multiplo de 16 bytes, completa o
+	ultimo bloco com bits no valor 1
+*/
+
 void read_file(char file_name[], block_128 X[], uint32_t number_of_blocks, uint32_t file_size) {
     FILE *p_input_file;
     int i;
@@ -19,6 +25,10 @@ void read_file(char file_name[], block_128 X[], uint32_t number_of_blocks, uint3
 	if (file_size % 16 > 0) set_last_bits_1(&X[number_of_blocks - 1], 4);
     fclose(p_input_file);
 }
+
+/*	Recebe o nome do arquivo a ser escrito, e cria esse arquivo com
+	o conteudo de X
+*/
 
 void write_to_file(char file_name[], block_128 X[], uint32_t file_size) {
     FILE *p_output_file;
@@ -50,6 +60,10 @@ uint32_t get_file_size(char file_name[]) {
     return file_size;
 }
 
+/*	Recebe o tamanho do arquivo e completa o conteudo dele
+	com bits 1, ate que file_size % 16 == 0
+*/
+
 void set_last_bits_1(block_128 * X, uint32_t file_size){
 	long bytes_to_switch;
 	bytes_to_switch = file_size % 16;
@@ -73,17 +87,29 @@ void set_last_bits_1(block_128 * X, uint32_t file_size){
 	}
 }
 
+/*	Rotacao circular para esquerda com bloco de 32 bits */
+
 uint32_t rotate_left_32(uint32_t value_32, uint8_t value_8){
     return (value_32<<value_8) | (value_32>>(32-value_8));
 }
+
+/*	Rotacao circular para esquerda com bloco de 8 bits */
 
 uint8_t rotate_left_8(uint8_t value_8, uint8_t value_c){
     return (value_8<<value_c) | (value_8>>(8-value_c));
 }
 
+/*	Recebe um bloco de 32 bits e retorna o valor dos 5 ultimos
+	bits
+*/
+
 uint8_t last_5_bits(uint32_t b){
 	return b & 0x1f;
 }
+
+/* 	Recebe uma string pass_block e retorna sua 
+	representacao hexadecimal
+*/
 
 uint32_t convert_string_to_uint(char* pass_block){
 	uint32_t hex_rep;
@@ -93,6 +119,10 @@ uint32_t convert_string_to_uint(char* pass_block){
     return hex_rep;
 }
 
+/*	Recebe um bloco I de 32 bits, e copia-o para um
+	block_32 (4 x 8 bits)
+*/
+
 void convert_32_to_8(uint32_t I, block_32 * I_t){
 	I_t->b0 = (uint8_t)(I >> 24);
 	I_t->b1 = (uint8_t)(I >> 16);
@@ -100,11 +130,19 @@ void convert_32_to_8(uint32_t I, block_32 * I_t){
 	I_t->b3 = (uint8_t)(I);
 }
 
+/*	Recebe um bloco de 32 bits, e troca o valor dos bits de
+	start ate end
+*/
+
 void switch_bytes_from_n(uint32_t * block, int start, int end){
 	int i;
 	for (i = start; i < end; i++)
 		* block |= (0xFF << (8 * i));
 }
+
+/*	Recebe a posicao do bit a ser trocado, e inverte seu
+	valor (index vai de 0..file_size)
+*/
 
 void change_bit_in_position(int index, block_128 * b){
 	int block_position = index % 128;
